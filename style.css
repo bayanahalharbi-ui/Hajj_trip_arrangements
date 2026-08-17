@@ -1,0 +1,209 @@
+/* =========================================================
+   ترتيبات ضيوف إمارة منطقة مكة المكرمة — أنماط مطابقة للتصميم المرجعي
+   التصميم ثابت — التعديل يكون على ملفات data/ فقط
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root{
+  --cream:      #EFE8DA;   /* خلفية التطبيق */
+  --cream-card: #F7F2E7;   /* خلفية البطاقات الفاتحة */
+  --ink:        #2E2A22;
+  --ink-soft:   #6E6656;
+  --gold:       #A9793E;
+  --gold-dark:  #8C6530;
+  --line:       #E1D6BF;
+  --red:        #C0392B;   /* أيقونة "تحرك" */
+  --yellow:     #E8B93A;   /* أيقونة "تجمع" */
+  --white:      #FFFFFF;
+
+  /* ألوان الأيام — كل يوم له لون ثابت في كل الموقع */
+  --d-tarwiyah:   #3E5C6E;
+  --d-arafah:     #3E948A;
+  --d-nahr:       #6E8C4B;
+  --d-tashreeq1:  #8A7048;
+  --d-tashreeq2:  #8B4A55;
+
+  --radius-lg: 22px;
+  --radius-md: 14px;
+  --shadow: 0 2px 4px rgba(46,42,34,.06), 0 10px 26px rgba(46,42,34,.08);
+}
+
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+
+body{
+  margin:0;
+  min-height:100vh;
+  background-color: var(--cream);
+  background-image:
+    radial-gradient(rgba(169,121,62,.10) 1px, transparent 1px),
+    radial-gradient(circle at 12% 8%, rgba(169,121,62,.06), transparent 40%);
+  background-size: 22px 22px, auto;
+  color: var(--ink);
+  font-family:'IBM Plex Sans Arabic', system-ui, sans-serif;
+  direction: rtl;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+
+.mono{ font-family:'IBM Plex Mono','IBM Plex Sans Arabic',monospace; direction:ltr; unicode-bidi:plaintext; }
+a{ color:inherit; text-decoration:none; }
+:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
+
+.phone-wrap{
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 28px 18px 60px;
+  min-height: 100vh;
+}
+
+/* ---- الرأس المشترك: الشعار واسم الجهة ---- */
+.emblem-head{ text-align:center; margin-bottom: 22px; }
+.emblem-head .logo-slot{
+  width: 88px; height: 88px; margin: 0 auto 10px;
+  display:flex; align-items:center; justify-content:center;
+}
+.emblem-head .logo-slot img{ max-width:100%; max-height:100%; }
+.emblem-head .welcome-banner{ margin-bottom: 6px; }
+.emblem-head .hayyakum-ar{
+  font-weight:800; font-size:1.05rem; color: var(--gold-dark);
+  font-style: italic;
+}
+.emblem-head .hayyakum-en{
+  font-weight:600; font-size:.72rem; color: var(--ink-soft);
+  letter-spacing: .04em; margin-top: 1px;
+}
+.emblem-head h1{
+  font-size:1.15rem; font-weight:800; margin: 10px 0 2px; line-height:1.5;
+}
+.emblem-head .year{ font-size:.95rem; font-weight:700; color: var(--ink-soft); }
+
+/* ---- زر ذهبي رئيسي ---- */
+.btn-gold{
+  display:block; width:100%; text-align:center;
+  background: linear-gradient(180deg, var(--gold), var(--gold-dark));
+  color:#fff !important; font-weight:800; font-size:1rem;
+  padding: 13px 20px; border-radius: 999px; border:none; cursor:pointer;
+  box-shadow: 0 6px 16px rgba(140,101,48,.35);
+}
+.btn-gold:hover{ filter:brightness(1.05); }
+
+.secret-badge{
+  display:block; text-align:center; margin: 16px auto 0; max-width: 240px;
+  border:1.5px solid #C0392B; color:#C0392B; font-weight:800; font-size:.82rem;
+  padding: 8px 14px; border-radius: 10px; background:#fff;
+}
+
+/* ---- شبكة جهات الاتصال (الصفحة الرئيسية) ---- */
+.contact-grid{
+  display:grid; grid-template-columns: 1fr 1fr; gap: 14px 16px;
+  margin-top: 30px;
+}
+.contact-item{ text-align:center; }
+.contact-item .role{
+  font-size:.8rem; font-weight:700; color: var(--ink-soft);
+  border-bottom: 1.5px solid var(--gold); display:inline-block; padding-bottom:3px; margin-bottom:6px;
+}
+.contact-item .name{ font-weight:800; font-size:.88rem; }
+.contact-item .phone{
+  display:inline-flex; align-items:center; gap:6px; justify-content:center;
+  margin-top:4px; font-size:.85rem; font-weight:700; color: var(--ink);
+}
+.contact-item .phone .ic{ width:16px; height:16px; color: var(--gold-dark); }
+.contact-item .empty{ color:#b7ac95; font-size:.8rem; }
+
+.notice{
+  margin-top: 26px; font-size:.78rem; color:#8a3226; text-align:center;
+  display:flex; align-items:flex-start; gap:6px; justify-content:center;
+}
+
+/* ---- عنوان صفحة (الجدول / اليوم / الصلاة) ---- */
+.page-title{ text-align:center; margin-bottom: 18px; }
+.page-title h1{ font-size:1.15rem; font-weight:800; margin:0 0 4px; }
+.page-title .sub{ font-size:.85rem; color: var(--ink-soft); font-weight:600; }
+
+/* ---- بطاقة يوم (قائمة الجدول) ---- */
+.day-card{
+  background: var(--cream-card);
+  border:1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 10px 10px 14px;
+  margin-bottom: 16px;
+}
+.day-card .head-pill{
+  color:#fff; border-radius: 999px; text-align:center;
+  padding: 8px 10px 10px; margin: -10px -10px 12px;
+  border-radius: var(--radius-lg) var(--radius-lg) 22px 22px;
+}
+.day-card .head-pill .weekday{ font-weight:800; font-size:.95rem; }
+.day-card .head-pill .hijri{ font-size:.72rem; opacity:.9; margin-top:1px; }
+.day-card .row{ display:flex; align-items:center; justify-content:space-between; padding: 2px 8px; }
+.day-card .prayer-link{
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  font-size:.68rem; font-weight:700; color: var(--ink-soft);
+}
+.day-card .prayer-link .circ{
+  width:36px; height:36px; border-radius:50%; background:#fff; border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center; color: var(--gold-dark);
+}
+.day-card .day-name{
+  flex:1; text-align:center; font-weight:800; font-size:1.15rem;
+}
+.day-card .go-link{
+  width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+}
+
+/* ---- الخط الزمني ليوم واحد ---- */
+.event{
+  background: var(--cream-card); border:1px solid var(--line); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow); margin-bottom: 14px; overflow:hidden;
+}
+.event .time-pill{
+  color:#fff; font-weight:700; font-size:.82rem; text-align:center; padding: 7px 10px;
+}
+.event .body{ display:flex; align-items:center; gap:10px; padding: 12px 14px; }
+.event .icon-circ{
+  flex:0 0 auto; width:38px; height:38px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; color:#fff;
+}
+.event .icon-circ.cat-move{ background: var(--red); }
+.event .icon-circ.cat-gather{ background: var(--yellow); }
+.event .txt{ flex:1; }
+.event .txt .etitle{ font-weight:800; font-size:.94rem; }
+.event .txt .enote{ font-size:.78rem; color:#a83a2c; font-weight:700; margin-top:2px; }
+.event .loc-link{
+  flex:0 0 auto; width:30px; height:30px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background: rgba(0,0,0,.06); color: var(--ink);
+}
+.event .loc-link:hover{ background: rgba(0,0,0,.12); }
+
+/* ---- صفحة أوقات الصلاة ---- */
+.prayer-row{
+  display:flex; align-items:center; gap:12px;
+  background: var(--cream-card); border:1px solid var(--line); border-radius: 999px;
+  padding: 8px 8px 8px 18px; margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.prayer-row .kaaba{
+  width:40px; height:40px; border-radius:50%; flex:0 0 auto;
+  display:flex; align-items:center; justify-content:center; color:#fff;
+}
+.prayer-row .p-time{ font-weight:700; font-size:.85rem; flex:1; }
+.prayer-row .p-name{ font-weight:800; font-size:.95rem; }
+
+/* ---- زر رجوع ---- */
+.btn-back{
+  display:block; width:100%; text-align:center; margin-top: 22px;
+  background: linear-gradient(180deg, var(--gold), var(--gold-dark));
+  color:#fff !important; font-weight:800; font-size:.95rem;
+  padding: 12px 20px; border-radius: 999px;
+}
+
+.empty-state{
+  padding: 30px 18px; text-align:center; color: var(--ink-soft);
+  border:1px dashed var(--line); border-radius: var(--radius-lg); background:#fff;
+}
+
+svg.i{ width:20px; height:20px; }

@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>لوحة تحكم المصمم — ترتيبات الحج</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  body{ background: var(--cream); }
+  .ed-wrap{ max-width: 1100px; margin: 0 auto; padding: 22px 18px 80px; }
+  .ed-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom: 18px; }
+  .ed-header h1{ font-size:1.2rem; margin:0; }
+  .ed-header .hint{ font-size:.78rem; color: var(--ink-soft); margin-top:2px; }
+  .ed-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .ed-btn{ border:none; border-radius:999px; padding:9px 16px; font-weight:800; font-size:.82rem; cursor:pointer; }
+  .ed-btn.primary{ background: linear-gradient(180deg, var(--gold), var(--gold-dark)); color:#fff; }
+  .ed-btn.secondary{ background:#fff; border:1.5px solid var(--gold); color: var(--gold-dark); }
+  .ed-btn.ghost{ background:transparent; border:1.5px dashed var(--line); color: var(--ink-soft); }
+  .ed-btn.danger{ background:#fff; border:1.5px solid var(--red); color: var(--red); }
+
+  .ed-tabs{ display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+  .ed-tab{ padding:8px 16px; border-radius:999px; font-weight:700; font-size:.85rem; cursor:pointer; background:#fff; border:1px solid var(--line); color: var(--ink-soft); }
+  .ed-tab.active{ background: var(--ink); color:#fff; border-color: var(--ink); }
+
+  .ed-panel{ display:none; }
+  .ed-panel.active{ display:block; }
+
+  .ed-card{ background: var(--cream-card); border:1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding:16px; margin-bottom:16px; }
+  .ed-card h3{ margin:0 0 12px; font-size:1rem; }
+  .ed-grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .ed-field{ margin-bottom:10px; }
+  .ed-field label{ display:block; font-size:.76rem; font-weight:700; color: var(--ink-soft); margin-bottom:4px; }
+  .ed-field input, .ed-field textarea, .ed-field select{
+    width:100%; border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-family:inherit; font-size:.88rem; background:#fff; color: var(--ink); box-sizing:border-box;
+  }
+  .ed-field textarea{ resize:vertical; min-height:44px; }
+
+  .day-block{ border:1.5px solid var(--line); border-radius: var(--radius-lg); padding:14px; margin-bottom:16px; background:#fff; }
+  .day-block .day-block-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .day-swatch{ display:inline-block; width:14px; height:14px; border-radius:50%; margin-left:6px; vertical-align:middle; }
+
+  .ev-row{ display:grid; grid-template-columns: 90px 110px 1fr 40px; gap:8px; align-items:start; margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--line); }
+  .ev-row .ev-more{ grid-column: 1 / -1; display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px; }
+  .ev-remove{ background:#fff; border:1px solid var(--red); color:var(--red); border-radius:8px; width:32px; height:32px; cursor:pointer; font-weight:800; }
+
+  .prayer-grid{ display:grid; grid-template-columns: repeat(5,1fr); gap:8px; }
+
+  .preview-overlay{ position:fixed; inset:0; background:rgba(46,42,34,.55); z-index:50; display:flex; align-items:flex-start; justify-content:center; overflow:auto; padding:30px 16px; }
+  .preview-overlay.hidden{ display:none; }
+  .preview-frame{ background: var(--cream); border-radius: 28px; padding:16px; max-width:430px; width:100%; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .preview-close{ display:block; width:100%; margin-top:14px; }
+  .preview-tabs{ display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; justify-content:center; }
+  .preview-tabs button{ font-size:.72rem; padding:5px 10px; border-radius:999px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+  .preview-tabs button.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  #printArea{ display:none; }
+  @media print{
+    body *{ visibility:hidden; }
+    #printArea, #printArea *{ visibility:visible; }
+    #printArea{ display:block; position:absolute; top:0; right:0; left:0; }
+  }
+  .print-day{ page-break-after: always; padding:24px; }
+  .print-day h2{ margin:0 0 2px; }
+  .print-day .pdate{ color:#555; font-size:.85rem; margin-bottom:14px; }
+  .print-ev{ display:flex; gap:10px; padding:8px 0; border-bottom:1px solid #eee; }
+  .print-ev .pt{ width:120px; font-weight:800; flex:0 0 auto; }
+  .print-ev .pn{ font-size:.8rem; color:#a83a2c; }
+
+  @media (max-width: 720px){
+    .ed-grid2{ grid-template-columns:1fr; }
+    .ev-row{ grid-template-columns: 80px 90px 1fr 36px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="ed-wrap">
+  <div class="ed-header">
+    <div>
+      <h1>لوحة تحكم المصمم</h1>
+      <div class="hint">عدّلي المحتوى هنا زي ما تبين يطلع بالضبط، ثم صدّري الملفات أو الـ PDF. هذي الصفحة أداة عمل داخلية، ما ترسل للحضور.</div>
+    </div>
+    <div class="ed-actions">
+      <button class="ed-btn ghost" onclick="loadFromSite()">تحميل البيانات الحالية من الموقع</button>
+      <button class="ed-btn secondary" onclick="openPreview()">معاينة</button>
+      <button class="ed-btn secondary" onclick="exportPDF()">تصدير PDF</button>
+      <button class="ed-btn primary" onclick="exportZip()">تنزيل ملفات الموقع المحدثة</button>
+    </div>
+  </div>
+
+  <div class="ed-tabs">
+    <div class="ed-tab active" data-tab="home" onclick="showTab('home')">الصفحة الرئيسية</div>
+    <div class="ed-tab" data-tab="days" onclick="showTab('days')">الأيام والفعاليات</div>
+    <div class="ed-tab" data-tab="prayer" onclick="showTab('prayer')">أوقات الصلاة</div>
+  </div>
+
+  <!-- ===== الصفحة الرئيسية ===== -->
+  <div class="ed-panel active" id="panel-home">
+    <div class="ed-card">
+      <h3>معلومات عامة</h3>
+      <div class="ed-grid2">
+        <div class="ed-field"><label>الترحيب</label><input id="h_welcome"></div>
+        <div class="ed-field"><label>اسم الجهة</label><input id="h_org"></div>
+        <div class="ed-field"><label>سنة الحج</label><input id="h_year"></div>
+        <div class="ed-field"><label>نص السرية</label><input id="h_secret"></div>
+      </div>
+      <div class="ed-field"><label>تنبيه</label><textarea id="h_notice"></textarea></div>
+    </div>
+    <div class="ed-card">
+      <h3>جهات الاتصال</h3>
+      <div id="contactsBox"></div>
+    </div>
+  </div>
+
+  <!-- ===== الأيام والفعاليات ===== -->
+  <div class="ed-panel" id="panel-days">
+    <div id="daysBox"></div>
+    <button class="ed-btn secondary" onclick="addDay()">+ إضافة يوم</button>
+  </div>
+
+  <!-- ===== أوقات الصلاة ===== -->
+  <div class="ed-panel" id="panel-prayer">
+    <div id="prayerBox"></div>
+  </div>
+</div>
+
+<!-- معاينة -->
+<div class="preview-overlay hidden" id="previewOverlay">
+  <div>
+    <div class="preview-tabs" id="previewTabs"></div>
+    <div class="preview-frame">
+      <div class="phone-wrap" id="previewContent" style="padding:0;"></div>
+      <button class="ed-btn primary preview-close" onclick="closePreview()">إغلاق المعاينة</button>
+    </div>
+  </div>
+</div>
+
+<!-- منطقة الطباعة / PDF -->
+<div id="printArea"></div>
+
+<script src="assets/main.js"></script>
+<script>
+/* ================= الحالة (State) ================= */
+const DEFAULT_COLORS = ['tarwiyah','arafah','nahr','tashreeq1','tashreeq2'];
+const CATS = [
+  {v:'', t:'بدون تصنيف'}, {v:'move', t:'تحرك / باص'}, {v:'gather', t:'تجمع'},
+  {v:'prayer', t:'صلاة'}, {v:'meal', t:'وجبة'}, {v:'stay', t:'مبيت'}, {v:'arrive', t:'وصول'}
+];
+const PRAYERS = ['الفجر','الظهر','العصر','المغرب','العشاء'];
+
+let state = {
+  home: {
+    welcome:'حياكم الله', org:'ترتيبات ضيوف إمارة منطقة مكة المكرمة', year:'لحج عام ١٤٤٧هـ',
+    secret:'سرّي غير قابل للنشر', notice:'يرجى الالتزام بالأوقات المحددة وتوجيهات المراسم',
+    contacts:[
+      {role:'المراسم', name:'', phone:''}, {role:'المراسم', name:'', phone:''},
+      {role:'للعناية الطبية', name:'', phone:''}, {role:'للاستفسار عن مسائل الحج', name:'', phone:''}
+    ]
+  },
+  days: DEFAULT_COLORS.map(c => ({
+    id:c, name:'', weekday:'', hijri:'', gregorian:'', color:c,
+    events:[], prayers:{الفجر:'',الظهر:'',العصر:'',المغرب:'',العشاء:''}
+  }))
+};
+
+/* ================= تحميل البيانات الحالية من مجلد data/ ================= */
+async function loadFromSite(){
+  try{
+    const s = parseSections(await loadText('data/home.txt'));
+    state.home.welcome = s['الترحيب'] || '';
+    state.home.org = s['اسم الجهة'] || '';
+    state.home.year = s['سنة الحج'] || '';
+    state.home.secret = s['نص السرية'] || '';
+    state.home.notice = s['تنبيه'] || '';
+    state.home.contacts = [1,2,3,4].map(i => ({
+      role: s['جهة اتصال ' + i + ' - الدور'] || '',
+      name: s['جهة اتصال ' + i + ' - الاسم'] || '',
+      phone: s['جهة اتصال ' + i + ' - الجوال'] || ''
+    }));
+
+    const days = await loadCSV('data/schedule/days.csv');
+    const prayerRows = await loadCSV('data/schedule/prayer-times.csv');
+    const newDays = [];
+    for(const d of days){
+      let events = [];
+      try{ events = await loadCSV('data/schedule/' + d.id + '.csv'); }catch(e){ events = []; }
+      const pr = prayerRows.find(p => p.day_id === d.id) || {};
+      newDays.push({
+        id:d.id, name:d['اسم_اليوم']||'', weekday:d['اليوم_بالاسبوع']||'',
+        hijri:d['التاريخ_الهجري']||'', gregorian:d['التاريخ_الميلادي']||'', color:d['لون']||'tarwiyah',
+        events: events.map(r => ({ time:r['الوقت']||'', cat:r['التصنيف']||'', title:r['الفعالية']||'', note:r['ملاحظات']||'', locName:r['اسم_الموقع']||'', locUrl:r['رابط_الموقع']||'' })),
+        prayers: { الفجر:pr['الفجر']||'', الظهر:pr['الظهر']||'', العصر:pr['العصر']||'', المغرب:pr['المغرب']||'', العشاء:pr['العشاء']||'' }
+      });
+    }
+    if(newDays.length) state.days = newDays;
+    renderAll();
+    alert('تم تحميل البيانات الحالية من مجلد data/ بنجاح.');
+  }catch(e){
+    alert('ما قدرت أحمّل بيانات موجودة (' + e.message + '). كملي التعبئة من الصفر، أو تأكدي إن هذه الصفحة مرفوعة بنفس مكان مجلد data/.');
+  }
+}
+
+/* ================= عناصر واجهة مساعدة ================= */
+function field(label, value, onChange, type){
+  const wrap = document.createElement('div'); wrap.className='ed-field';
+  const l = document.createElement('label'); l.textContent = label; wrap.appendChild(l);
+  const inp = document.createElement(type === 'textarea' ? 'textarea' : 'input');
+  inp.value = value || '';
+  inp.addEventListener('input', () => onChange(inp.value));
+  wrap.appendChild(inp);
+  return wrap;
+}
+
+/* ================= رسم: الصفحة الرئيسية ================= */
+function renderHome(){
+  document.getElementById('h_welcome').value = state.home.welcome;
+  document.getElementById('h_org').value = state.home.org;
+  document.getElementById('h_year').value = state.home.year;
+  document.getElementById('h_secret').value = state.home.secret;
+  document.getElementById('h_notice').value = state.home.notice;
+  ['welcome','org','year','secret'].forEach(k=>{
+    document.getElementById('h_'+k).oninput = e => state.home[k]=e.target.value;
+  });
+  document.getElementById('h_notice').oninput = e => state.home.notice = e.target.value;
+
+  const box = document.getElementById('contactsBox'); box.innerHTML='';
+  state.home.contacts.forEach((c, i)=>{
+    const row = document.createElement('div'); row.className='ed-grid2';
+    row.style.marginBottom='10px';
+    const roleF = field('الدور (جهة اتصال '+(i+1)+')', c.role, v=>c.role=v);
+    const nameF = field('الاسم', c.name, v=>c.name=v);
+    const phoneF = field('الجوال', c.phone, v=>c.phone=v);
+    row.appendChild(roleF); row.appendChild(nameF); row.appendChild(phoneF);
+    box.appendChild(row);
+  });
+}
+
+/* ================= رسم: الأيام والفعاليات ================= */
+function renderDays(){
+  const box = document.getElementById('daysBox'); box.innerHTML='';
+  state.days.forEach((day, di)=>{
+    const block = document.createElement('div'); block.className='day-block';
+
+    const head = document.createElement('div'); head.className='day-block-head';
+    const title = document.createElement('div');
+    title.innerHTML = '<span class="day-swatch" style="background:'+dayColor(day.color)+'"></span><b>'+(day.name||'يوم بدون اسم')+'</b>';
+    const delBtn = document.createElement('button'); delBtn.className='ed-btn danger'; delBtn.textContent='حذف اليوم';
+    delBtn.onclick = ()=>{ if(confirm('تأكيد حذف هذا اليوم بكل فعالياته؟')){ state.days.splice(di,1); renderAll(); } };
+    head.appendChild(title); head.appendChild(delBtn);
+    block.appendChild(head);
+
+    const grid = document.createElement('div'); grid.className='ed-grid2';
+    grid.appendChild(field('اسم اليوم (مثال: يوم عرفة)', day.name, v=>{day.name=v; renderDays();}));
+    grid.appendChild(field('اليوم بالأسبوع (مثال: يوم الثلاثاء)', day.weekday, v=>day.weekday=v));
+    grid.appendChild(field('التاريخ الهجري', day.hijri, v=>day.hijri=v));
+    grid.appendChild(field('التاريخ الميلادي', day.gregorian, v=>day.gregorian=v));
+    const colorField = document.createElement('div'); colorField.className='ed-field';
+    colorField.innerHTML = '<label>لون اليوم</label>';
+    const sel = document.createElement('select');
+    DEFAULT_COLORS.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; if(c===day.color)o.selected=true; sel.appendChild(o); });
+    sel.onchange = e=>{ day.color=e.target.value; renderDays(); };
+    colorField.appendChild(sel);
+    grid.appendChild(colorField);
+    block.appendChild(grid);
+
+    const evHead = document.createElement('h3'); evHead.textContent='الفعاليات'; evHead.style.marginTop='14px';
+    block.appendChild(evHead);
+
+    day.events.forEach((ev, ei)=>{
+      const row = document.createElement('div'); row.className='ev-row';
+      const timeInp = document.createElement('input'); timeInp.placeholder='الوقت مثل 16:30'; timeInp.value=ev.time;
+      timeInp.oninput = e=>ev.time=e.target.value;
+      const catSel = document.createElement('select');
+      CATS.forEach(c=>{ const o=document.createElement('option'); o.value=c.v; o.textContent=c.t; if(c.v===ev.cat)o.selected=true; catSel.appendChild(o); });
+      catSel.onchange = e=>ev.cat=e.target.value;
+      const titleInp = document.createElement('input'); titleInp.placeholder='اسم الفعالية'; titleInp.value=ev.title;
+      titleInp.oninput = e=>ev.title=e.target.value;
+      const rm = document.createElement('button'); rm.className='ev-remove'; rm.textContent='×';
+      rm.onclick = ()=>{ day.events.splice(ei,1); renderDays(); };
+      row.appendChild(timeInp); row.appendChild(catSel); row.appendChild(titleInp); row.appendChild(rm);
+
+      const more = document.createElement('div'); more.className='ev-more';
+      const noteInp = document.createElement('input'); noteInp.placeholder='ملاحظات (تظهر بالأحمر)'; noteInp.value=ev.note;
+      noteInp.oninput = e=>ev.note=e.target.value;
+      const locWrap = document.createElement('div'); locWrap.style.display='flex'; locWrap.style.gap='6px';
+      const locNameInp = document.createElement('input'); locNameInp.placeholder='اسم الموقع'; locNameInp.value=ev.locName; locNameInp.style.flex='1';
+      locNameInp.oninput = e=>ev.locName=e.target.value;
+      const locUrlInp = document.createElement('input'); locUrlInp.placeholder='رابط قوقل ماب'; locUrlInp.value=ev.locUrl; locUrlInp.style.flex='2';
+      locUrlInp.oninput = e=>ev.locUrl=e.target.value;
+      locWrap.appendChild(locNameInp); locWrap.appendChild(locUrlInp);
+      more.appendChild(noteInp); more.appendChild(locWrap);
+      row.appendChild(more);
+
+      block.appendChild(row);
+    });
+
+    const addEvBtn = document.createElement('button'); addEvBtn.className='ed-btn secondary'; addEvBtn.textContent='+ إضافة فعالية';
+    addEvBtn.style.marginTop='6px';
+    addEvBtn.onclick = ()=>{ day.events.push({time:'',cat:'',title:'',note:'',locName:'',locUrl:''}); renderDays(); };
+    block.appendChild(addEvBtn);
+
+    box.appendChild(block);
+  });
+}
+function addDay(){
+  state.days.push({id:'day'+(state.days.length+1), name:'', weekday:'', hijri:'', gregorian:'', color:'tarwiyah', events:[], prayers:{الفجر:'',الظهر:'',العصر:'',المغرب:'',العشاء:''}});
+  renderAll();
+}
+
+/* ================= رسم: أوقات الصلاة ================= */
+function renderPrayer(){
+  const box = document.getElementById('prayerBox'); box.innerHTML='';
+  state.days.forEach(day=>{
+    const card = document.createElement('div'); card.className='ed-card';
+    const h = document.createElement('h3');
+    h.innerHTML = '<span class="day-swatch" style="background:'+dayColor(day.color)+'"></span>'+(day.name||'يوم بدون اسم');
+    card.appendChild(h);
+    const grid = document.createElement('div'); grid.className='prayer-grid';
+    PRAYERS.forEach(p=>{
+      const f = document.createElement('div'); f.className='ed-field';
+      f.innerHTML = '<label>'+p+'</label>';
+      const inp = document.createElement('input'); inp.value = day.prayers[p]||''; inp.placeholder='مثل 12:18';
+      inp.oninput = e=>day.prayers[p]=e.target.value;
+      f.appendChild(inp);
+      grid.appendChild(f);
+    });
+    card.appendChild(grid);
+    box.appendChild(card);
+  });
+}
+
+function renderAll(){ renderHome(); renderDays(); renderPrayer(); }
+
+/* ================= التبويبات ================= */
+function showTab(name){
+  document.querySelectorAll('.ed-tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.ed-panel').forEach(p=>p.classList.toggle('active', p.id==='panel-'+name));
+}
+
+/* ================= CSV / نصوص التصدير ================= */
+function csvEscape(v){
+  v = (v==null?'':String(v));
+  if(/[",\n]/.test(v)) return '"' + v.replace(/"/g,'""') + '"';
+  return v;
+}
+function toCSV(headers, rows){
+  const lines = [headers.map(csvEscape).join(',')];
+  rows.forEach(r => lines.push(headers.map(h=>csvEscape(r[h])).join(',')));
+  return lines.join('\n') + '\n';
+}
+function buildHomeTxt(){
+  const h = state.home;
+  let out = '### الترحيب\n'+h.welcome+'\n\n### اسم الجهة\n'+h.org+'\n\n### سنة الحج\n'+h.year+'\n\n### نص السرية\n'+h.secret+'\n\n### تنبيه\n'+h.notice+'\n\n';
+  h.contacts.forEach((c,i)=>{
+    out += '### جهة اتصال '+(i+1)+' - الدور\n'+c.role+'\n\n### جهة اتصال '+(i+1)+' - الاسم\n'+c.name+'\n\n### جهة اتصال '+(i+1)+' - الجوال\n'+c.phone+'\n\n';
+  });
+  return out.trim()+'\n';
+}
+function buildDaysCsv(){
+  const headers = ['id','اسم_اليوم','اليوم_بالاسبوع','التاريخ_الهجري','التاريخ_الميلادي','لون'];
+  const rows = state.days.map(d=>({id:d.id, 'اسم_اليوم':d.name, 'اليوم_بالاسبوع':d.weekday, 'التاريخ_الهجري':d.hijri, 'التاريخ_الميلادي':d.gregorian, 'لون':d.color}));
+  return toCSV(headers, rows);
+}
+function buildEventsCsv(day){
+  const headers = ['الوقت','التصنيف','الفعالية','ملاحظات','اسم_الموقع','رابط_الموقع'];
+  const rows = day.events.map(e=>({'الوقت':e.time,'التصنيف':e.cat,'الفعالية':e.title,'ملاحظات':e.note,'اسم_الموقع':e.locName,'رابط_الموقع':e.locUrl}));
+  return toCSV(headers, rows);
+}
+function buildPrayerCsv(){
+  const headers = ['day_id','الفجر','الظهر','العصر','المغرب','العشاء'];
+  const rows = state.days.map(d=>({day_id:d.id, ...d.prayers}));
+  return toCSV(headers, rows);
+}
+
+async function exportZip(){
+  const zip = new JSZip();
+  zip.file('data/home.txt', buildHomeTxt());
+  zip.file('data/schedule/days.csv', buildDaysCsv());
+  zip.file('data/schedule/prayer-times.csv', buildPrayerCsv());
+  state.days.forEach(d => zip.file('data/schedule/'+d.id+'.csv', buildEventsCsv(d)));
+  const blob = await zip.generateAsync({type:'blob'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'hajj-data-update.zip';
+  document.body.appendChild(a); a.click(); a.remove();
+  alert('تم تنزيل الملفات. فكّي الضغط، وارفعي مجلد data/ كامل مكان القديم في GitHub (Add file → Upload files) ثم Commit — الرابط اللي عند الحضور يتحدث تلقائي.');
+}
+
+/* ================= المعاينة ================= */
+let previewMode = 'home';
+function openPreview(){
+  document.getElementById('previewOverlay').classList.remove('hidden');
+  const tabsBox = document.getElementById('previewTabs'); tabsBox.innerHTML='';
+  const mkTab = (label, mode)=>{ const b=document.createElement('button'); b.textContent=label; b.className = mode===previewMode?'active':''; b.onclick=()=>{previewMode=mode; renderPreview();}; return b; };
+  tabsBox.appendChild(mkTab('الرئيسية','home'));
+  tabsBox.appendChild(mkTab('الجدول','schedule'));
+  state.days.forEach(d=> tabsBox.appendChild(mkTab(d.name||d.id, 'day:'+d.id)));
+  renderPreview();
+}
+function closePreview(){ document.getElementById('previewOverlay').classList.add('hidden'); }
+
+function renderPreview(){
+  document.querySelectorAll('#previewTabs button').forEach(b=>{
+    const mode = b.textContent;
+  });
+  const c = document.getElementById('previewContent'); c.innerHTML='';
+  c.style.padding = '20px 14px';
+
+  if(previewMode==='home'){
+    const head = el('div',{class:'emblem-head'},[
+      el('div',{class:'welcome-banner'},[
+        el('div',{class:'hayyakum-ar'}, state.home.welcome),
+        el('div',{class:'hayyakum-en'}, 'Hayyakum Allah'),
+      ]),
+      el('div',{class:'logo-slot'}, el('img',{src:'assets/logo.png', style:'max-width:100%;max-height:100%'})),
+      el('h1',{}, state.home.org),
+      el('div',{class:'year'}, state.home.year),
+    ]);
+    c.appendChild(head);
+    c.appendChild(el('a',{class:'btn-gold', style:'margin-top:14px'}, 'دخول'));
+    c.appendChild(el('span',{class:'secret-badge'}, state.home.secret));
+    const grid = el('div',{class:'contact-grid'});
+    state.home.contacts.forEach(ct=>{
+      if(!ct.role) return;
+      grid.appendChild(el('div',{class:'contact-item'},[
+        el('div',{class:'role'},ct.role), el('div',{class:'name'},ct.name),
+        el('div',{class:'phone', html: icon('phone') + ' <span>'+ct.phone+'</span>'})
+      ]));
+    });
+    c.appendChild(grid);
+    c.appendChild(el('div',{class:'notice', html: icon('clock') + ' <span>'+state.home.notice+'</span>'}));
+  }
+
+  if(previewMode==='schedule'){
+    const t = el('div',{class:'page-title'},[el('h1',{},'الجدول الزمني لأداء فريضة الحج'), el('div',{class:'sub'}, state.home.year)]);
+    c.appendChild(t);
+    state.days.forEach(d=>{
+      const color = dayColor(d.color);
+      c.appendChild(el('div',{class:'day-card'},[
+        el('div',{class:'head-pill', style:'background:'+color},[
+          el('div',{class:'weekday'}, d.weekday), el('div',{class:'hijri'}, (d.hijri||'')+'  الموافق '+(d.gregorian||''))
+        ]),
+        el('div',{class:'row'},[
+          el('div',{class:'prayer-link'},[el('span',{class:'circ', html:icon('prayer')}),'أوقات الصلاة']),
+          el('div',{class:'day-name', style:'color:'+color}, d.name),
+          el('div',{class:'go-link', style:'background:'+color+';color:#fff', html:icon('arrive')}),
+        ])
+      ]));
+    });
+  }
+
+  if(previewMode.startsWith('day:')){
+    const id = previewMode.slice(4);
+    const d = state.days.find(x=>x.id===id); if(!d) return;
+    const color = dayColor(d.color);
+    c.appendChild(el('div',{class:'page-title'},[
+      el('div',{style:'display:inline-block;color:#fff;padding:8px 22px;border-radius:999px;font-weight:800;font-size:1.05rem;background:'+color}, d.name),
+      el('div',{class:'sub', style:'margin-top:8px'}, (d.weekday||'')+'  '+(d.hijri||'')+' الموافق '+(d.gregorian||''))
+    ]));
+    if(!d.events.length){ c.appendChild(el('div',{class:'empty-state'},'لا توجد فعاليات مضافة لهذا اليوم بعد.')); }
+    d.events.forEach(r=>{
+      const parts = [];
+      if(r.time) parts.push(el('div',{class:'time-pill', style:'background:'+color}, 'الساعة '+r.time));
+      const circClass = r.cat==='move'?'icon-circ cat-move': r.cat==='gather'?'icon-circ cat-gather':'icon-circ';
+      const iconCirc = el('span',{class:circClass, html:icon(r.cat||'clock')});
+      if(r.cat!=='move' && r.cat!=='gather') iconCirc.setAttribute('style','background:'+color);
+      const txtChildren=[el('div',{class:'etitle'}, r.title)];
+      if(r.note) txtChildren.push(el('div',{class:'enote'}, r.note));
+      const bodyChildren=[iconCirc, el('div',{class:'txt'}, txtChildren)];
+      if(r.locUrl) bodyChildren.push(el('a',{class:'loc-link', href:r.locUrl, target:'_blank', html:icon('pin')}));
+      parts.push(el('div',{class:'body'}, bodyChildren));
+      c.appendChild(el('div',{class:'event'}, parts));
+    });
+  }
+}
+
+/* ================= تصدير PDF ================= */
+function exportPDF(){
+  const area = document.getElementById('printArea'); area.innerHTML='';
+  const cover = document.createElement('div'); cover.className='print-day';
+  cover.innerHTML = '<h1>'+state.home.org+'</h1><h2>'+state.home.year+'</h2>';
+  area.appendChild(cover);
+
+  state.days.forEach(d=>{
+    const sec = document.createElement('div'); sec.className='print-day';
+    sec.innerHTML = '<h2>'+d.name+'</h2><div class="pdate">'+(d.weekday||'')+' '+(d.hijri||'')+' الموافق '+(d.gregorian||'')+'</div>';
+    d.events.forEach(r=>{
+      const row = document.createElement('div'); row.className='print-ev';
+      row.innerHTML = '<div class="pt">'+(r.time?'الساعة '+r.time:'')+'</div><div><div>'+r.title+'</div>'+(r.note?'<div class="pn">'+r.note+'</div>':'')+(r.locUrl?'<div style="font-size:.75rem;color:#3e5c6e">'+ (r.locName||'الموقع') +': '+r.locUrl+'</div>':'')+'</div>';
+      sec.appendChild(row);
+    });
+    const prTitle = document.createElement('div'); prTitle.style.marginTop='14px'; prTitle.style.fontWeight='800'; prTitle.textContent='أوقات الصلاة';
+    sec.appendChild(prTitle);
+    PRAYERS.forEach(p=>{
+      if(!d.prayers[p]) return;
+      const row = document.createElement('div'); row.className='print-ev';
+      row.innerHTML = '<div class="pt">'+d.prayers[p]+'</div><div>صلاة '+p+'</div>';
+      sec.appendChild(row);
+    });
+    area.appendChild(sec);
+  });
+
+  window.print();
+}
+
+/* ================= بداية التشغيل ================= */
+renderAll();
+loadFromSite();
+</script>
+</body>
+</html>
