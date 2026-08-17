@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ترتيبات ضيوف إمارة منطقة مكة المكرمة</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="phone-wrap">
+
+  <div class="emblem-head">
+    <div class="logo-slot">
+      <!-- ضع هنا صورة الشعار الرسمي: assets/logo.png -->
+      <img src="assets/logo.png" alt="شعار الجهة" onerror="this.onerror=null;this.src='assets/logo-placeholder.svg';">
+    </div>
+    <div class="hayyakum" id="hayyakum"></div>
+    <h1 id="orgName"></h1>
+    <div class="year" id="hajjYear"></div>
+  </div>
+
+  <a class="btn-gold" href="schedule.html">دخول</a>
+  <span class="secret-badge" id="secretLabel"></span>
+
+  <div class="contact-grid" id="contactGrid"></div>
+
+  <div class="notice" id="noticeText"></div>
+
+</div>
+
+<script src="assets/main.js"></script>
+<script>
+(async function () {
+  try {
+    const s = parseSections(await loadText('data/home.txt'));
+    document.getElementById('hayyakum').textContent = s['الترحيب'] || '';
+    document.getElementById('orgName').textContent = s['اسم الجهة'] || '';
+    document.getElementById('hajjYear').textContent = s['سنة الحج'] || '';
+    document.getElementById('secretLabel').textContent = s['نص السرية'] || '';
+    document.getElementById('noticeText').innerHTML = icon('clock') + ' <span>' + (s['تنبيه'] || '') + '</span>';
+
+    const grid = document.getElementById('contactGrid');
+    grid.innerHTML = '';
+    for (let i = 1; i <= 4; i++) {
+      const role = s['جهة اتصال ' + i + ' - الدور'];
+      if (!role) continue;
+      const name = s['جهة اتصال ' + i + ' - الاسم'] || '';
+      const phone = s['جهة اتصال ' + i + ' - الجوال'] || '';
+      grid.appendChild(el('div', { class: 'contact-item' }, [
+        el('div', { class: 'role' }, role),
+        el('div', { class: 'name' }, name),
+        el('div', { class: 'phone', html: icon('phone') + ' <span>' + phone + '</span>' }),
+      ]));
+    }
+  } catch (e) {
+    showError(document.querySelector('.phone-wrap'), e.message);
+  }
+})();
+</script>
+</body>
+</html>
