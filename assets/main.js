@@ -64,7 +64,7 @@ function el(tag, attrs = {}, children = []) {
 function showError(container, msg) {
   container.innerHTML = '';
   container.appendChild(el('div', { class: 'empty-state' },
-    'تعذّر تحميل المحتوى. تأكد أن ملفات مجلد data لم تُحذف وأن تنسيقها صحيح.' + (msg ? ' (' + msg + ')' : '')));
+    'تعذّر تحميل المحتوى.' + (msg ? ' (' + msg + ')' : '')));
 }
 
 /* ---- الألوان المرتبطة بكل يوم ---- */
