@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>الجدول الزمني — ترتيبات الحج</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="assets/firebase-config.js"></script>
+<script src="assets/data-store.js"></script>
+</head>
+<body>
+<div class="phone-wrap">
+
+  <div class="emblem-head">
+    <div class="logo-slot">
+      <img src="assets/logo.png" alt="شعار الجهة" onerror="this.onerror=null;this.src='assets/logo-placeholder.svg';">
+    </div>
+  </div>
+
+  <div class="page-title">
+    <h1>الجدول الزمني لأداء فريضة الحج</h1>
+    <div class="sub" id="yearSub"></div>
+  </div>
+
+  <div id="dayList"></div>
+
+  <a class="btn-back" href="index.html">رجوع</a>
+</div>
+
+<script src="assets/main.js"></script>
+<script>
+(async function () {
+  const list = document.getElementById('dayList');
+  try {
+    const data = await loadData();
+    if (!data) throw new Error('ما فيه بيانات منشورة بعد');
+    document.getElementById('yearSub').textContent = data.home.year || '';
+
+    list.innerHTML = '';
+    (data.days || []).forEach(d => {
+      const color = dayColor(d.color);
+      const card = el('div', { class: 'day-card' }, [
+        el('div', { class: 'head-pill', style: 'background:' + color }, [
+          el('div', { class: 'weekday' }, d.weekday),
+          el('div', { class: 'hijri' }, (d.hijri || '') + '  الموافق ' + (d.gregorian || '')),
+        ]),
+        el('div', { class: 'row' }, [
+          el('a', { class: 'prayer-link', href: 'prayer-times.html?day=' + d.id }, [
+            el('span', { class: 'circ', html: icon('prayer') }),
+            'أوقات الصلاة',
+          ]),
+          el('a', { class: 'day-name', href: 'day.html?day=' + d.id, style: 'color:' + color }, d.name),
+          el('a', { class: 'go-link', href: 'day.html?day=' + d.id, style: 'background:' + color + ';color:#fff', html: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6 9 12l6 6"/></svg>' }),
+        ]),
+      ]);
+      list.appendChild(card);
+    });
+  } catch (e) {
+    showError(list, e.message);
+  }
+})();
+</script>
+</body>
+</html>
