@@ -82,6 +82,25 @@
 <!-- Print / PDF export area (hidden on screen, shown only by @media print) -->
 <div id="printArea"></div>
 
+<!-- One-time reminder shown before window.print() — Chrome's margins and
+     header/footer options live in its print dialog and cannot be set from
+     CSS or JavaScript, so the person has to toggle them by hand each time. -->
+<div class="preview-overlay hidden" id="printHintOverlay">
+  <div class="preview-frame" style="max-width:380px">
+    <h3 style="margin-top:0">قبل الحفظ كـ PDF</h3>
+    <p style="font-size:.86rem; line-height:1.9">
+      في نافذة الطباعة اللي بتفتح الآن، افتح <b>"More settings"</b> وتأكد من:
+    </p>
+    <ul style="font-size:.86rem; line-height:2; padding-inline-start:20px">
+      <li><b>Margins</b> ← اختر <b>None</b></li>
+      <li><b>Headers and footers</b> ← أوقفه (Off)</li>
+    </ul>
+    <p style="font-size:.8rem; color:var(--ink-soft)">هذي إعدادات المتصفح نفسه ولازم تُضبط يدويًا في كل مرة — بدونها يضيف Chrome تاريخ ورابط الصفحة تلقائيًا فوق وتحت كل ورقة.</p>
+    <button class="ed-btn primary" style="width:100%" onclick="proceedToPrint()">فهمت، تابع إلى الطباعة</button>
+    <button class="ed-btn ghost" style="width:100%; margin-top:6px" onclick="document.getElementById('printHintOverlay').classList.add('hidden')">إلغاء</button>
+  </div>
+</div>
+
 <script src="assets/main.js"></script>
 <script>
 /* =========================================================
@@ -543,7 +562,13 @@ async function publish() {
     await saveData(state);
     status.textContent = 'تم النشر ✓ — الرابط الذي يستخدمه الحضور يعرض هذا التحديث الآن.';
   } catch (e) {
-    status.textContent = 'حدث خطأ أثناء النشر: ' + e.message;
+    const msg = String(e && e.message || e);
+    if (/permission/i.test(msg)) {
+      status.innerHTML = 'تعذّر النشر: قواعد الأمان (Rules) في Firestore على وحدة تحكم Firebase لسا تشترط تسجيل دخول للكتابة، رغم أن هذه النسخة من لوحة التحكم لا تستخدم تسجيل دخول. ' +
+        'الحل: من <a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a> ← Firestore Database ← تبويب Rules، تأكد أن السطر الخاص بالكتابة هو <code>allow write: if true;</code> (بدون شرط request.auth)، ثم Publish هناك. راجع القسم الأول في README.md لنص القاعدة الكامل.';
+    } else {
+      status.textContent = 'حدث خطأ أثناء النشر: ' + msg;
+    }
   }
   btn.disabled = false;
 }
@@ -715,6 +740,12 @@ function exportPDF() {
     addPage(c => buildPrayerPage(c, d));
   });
 
+  document.getElementById('printHintOverlay').classList.remove('hidden');
+}
+
+/** Called from the reminder overlay's "تابع إلى الطباعة" button. */
+function proceedToPrint() {
+  document.getElementById('printHintOverlay').classList.add('hidden');
   window.print();
 }
 
