@@ -327,7 +327,10 @@ input[type="color"].color-native{
     background: var(--cream) !important;
     padding: 14mm 8mm;
     box-sizing: border-box;
-    min-height: 100vh; /* fills the physical page edge-to-edge with cream, even on short pages */
+    /* No min-height/vh here on purpose — vh is computed unreliably inside
+       Chrome's print preview and was the cause of the leftover blank gap.
+       html/body's own cream background (set above) is painted across the
+       full physical page automatically, with or without extra height. */
   }
   .print-page:last-child{ page-break-after: auto; }
   .print-card{
