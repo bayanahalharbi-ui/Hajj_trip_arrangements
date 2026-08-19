@@ -70,12 +70,10 @@
 
 <!-- Live preview overlay -->
 <div class="preview-overlay hidden" id="previewOverlay">
-  <div>
+  <div class="preview-frame">
     <div class="preview-tabs" id="previewTabs"></div>
-    <div class="preview-frame">
-      <div class="phone-wrap" id="previewContent" style="padding:0;"></div>
-      <button class="ed-btn primary preview-close" onclick="closePreview()">إغلاق المعاينة</button>
-    </div>
+    <div class="phone-wrap" id="previewContent" style="padding:0;"></div>
+    <button class="ed-btn primary preview-close" onclick="closePreview()">إغلاق المعاينة</button>
   </div>
 </div>
 
@@ -309,36 +307,35 @@ function buildDayBlock(day, di) {
     { get: () => day.weekday, set: v => day.weekday = v },
   ), 'يُملأ تلقائيًا عند اختيار التاريخ الميلادي، ويمكن تعديله يدويًا'));
 
-  // Both dates pick the SAME underlying day — either box opens a calendar,
-  // and choosing a date in one updates the other automatically (a native
-  // <input type="date"> always stores a Gregorian ISO value internally,
-  // even when its picker is displayed with the Hijri calendar via `lang`).
+  // Only the Gregorian field is a native calendar picker — there is no
+  // reliable native Hijri date picker in any browser (an <input type="date">
+  // always stores and displays a Gregorian value internally, even with a
+  // `lang` override, which was the cause of the Hijri box showing the
+  // Gregorian date). The Hijri field is a plain text field, auto-filled
+  // from the Gregorian picker, and still editable by hand if needed.
   const gregInput = document.createElement('input');
   gregInput.type = 'date';
   gregInput.value = day.gregorian || '';
 
-  const hijriInput = document.createElement('input');
-  hijriInput.type = 'date';
-  hijriInput.lang = 'ar-SA-u-ca-islamic-umalqura';
-  hijriInput.value = day.gregorian || '';
+  const hijriInput = textInput('مثال: ١٤٤٧/١٢/٩');
+  hijriInput.value = day.hijri || '';
 
   // The "اسم اليوم" field is grid.children[0] and "اليوم بالأسبوع" is grid.children[1] (both already appended above).
   const weekdayFieldInput = grid.children[1].querySelector('input');
 
-  function syncFromIso(iso) {
+  gregInput.addEventListener('change', () => {
+    const iso = gregInput.value;
     day.gregorian = iso;
     day.gregorianDisplay = gregorianDisplay(iso);
-    day.hijri = hijriFromGregorian(iso);
     const autoWeekday = weekdayFromGregorian(iso);
+    const autoHijri = hijriFromGregorian(iso);
     if (autoWeekday) { day.weekday = autoWeekday; weekdayFieldInput.value = autoWeekday; }
-    gregInput.value = iso;
-    hijriInput.value = iso;
-  }
-  gregInput.addEventListener('change', () => syncFromIso(gregInput.value));
-  hijriInput.addEventListener('change', () => syncFromIso(hijriInput.value));
+    if (autoHijri) { day.hijri = autoHijri; hijriInput.value = autoHijri; }
+  });
+  wireInput(hijriInput, { get: () => day.hijri, set: v => day.hijri = v });
 
-  grid.appendChild(field('التاريخ الميلادي', gregInput, 'يملأ اليوم والتاريخ الهجري تلقائيًا'));
-  grid.appendChild(field('التاريخ الهجري', hijriInput, 'نفس التاريخ بالتقويم الهجري — التعديل من أي مربع يحدّث الآخر'));
+  grid.appendChild(field('التاريخ الميلادي', gregInput, 'اختر من التقويم — يملأ اليوم والتاريخ الهجري تلقائيًا'));
+  grid.appendChild(field('التاريخ الهجري', hijriInput, 'يُقترح تلقائيًا من التاريخ الميلادي، ويمكن تعديله يدويًا'));
 
   block.appendChild(grid);
 
@@ -586,7 +583,12 @@ function openPreview() {
     const b = document.createElement('button');
     b.textContent = label;
     b.className = mode === previewMode ? 'active' : '';
-    b.onclick = () => { previewMode = mode; renderPreview(); };
+    b.onclick = () => {
+      previewMode = mode;
+      // Re-sync the active class on every tab button, not just at creation time.
+      tabsBox.querySelectorAll('button').forEach(btn => btn.classList.toggle('active', btn === b));
+      renderPreview();
+    };
     return b;
   };
   tabsBox.appendChild(mkTab('الرئيسية', 'home'));
@@ -598,6 +600,11 @@ function openPreview() {
   renderPreview();
 }
 function closePreview() { document.getElementById('previewOverlay').classList.add('hidden'); }
+
+// Clicking the dark backdrop (but not the card itself) closes the preview.
+document.getElementById('previewOverlay').addEventListener('click', e => {
+  if (e.target.id === 'previewOverlay') closePreview();
+});
 
 /* =========================================================
    Shared page builders
