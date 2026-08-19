@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>لوحة التحكم — ترتيبات الحج</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="assets/firebase-config.js"></script>
+<script src="assets/data-store.js"></script>
+<style>
+  /* Page-specific overrides that don't belong in the shared stylesheet */
+  body{ background: var(--cream); }
+</style>
+</head>
+<body>
+
+<!-- ===== Dashboard ===== -->
+<div class="ed-wrap" id="editorShell">
+  <div class="ed-header">
+    <div>
+      <h1>لوحة التحكم</h1>
+      <div class="hint">تعديل المحتوى ومعاينة الشكل ثم نشر التحديثات — يتحدث الرابط الذي يظهر للحضور تلقائيًا فور النشر.</div>
+    </div>
+    <div class="ed-actions">
+      <button class="ed-btn secondary" onclick="openPreview()">معاينة</button>
+      <button class="ed-btn secondary" onclick="exportPDF()">تصدير PDF</button>
+      <button class="ed-btn primary" id="publishBtn" onclick="publish()">نشر التحديثات</button>
+    </div>
+  </div>
+  <div class="save-status" id="saveStatus"></div>
+
+  <div class="ed-tabs">
+    <div class="ed-tab active" data-tab="home" onclick="showTab('home')">الصفحة الرئيسية</div>
+    <div class="ed-tab" data-tab="days" onclick="showTab('days')">الأيام والفعاليات</div>
+    <div class="ed-tab" data-tab="prayer" onclick="showTab('prayer')">أوقات الصلاة</div>
+  </div>
+
+  <!-- ===== Home tab ===== -->
+  <div class="ed-panel active" id="panel-home">
+    <div class="ed-card">
+      <h3>معلومات عامة</h3>
+      <div class="ed-grid2">
+        <div class="ed-field"><label>الترحيب</label><input id="h_welcome" placeholder="مثال: حياكم الله"></div>
+        <div class="ed-field"><label>اسم الجهة</label><input id="h_org" placeholder="مثال: ترتيبات ضيوف إمارة منطقة مكة المكرمة"></div>
+        <div class="ed-field"><label>سنة الحج</label><input id="h_year" placeholder="مثال: لحج عام ١٤٤٧هـ"></div>
+        <div class="ed-field"><label>نص السرية</label><input id="h_secret" placeholder="مثال: سرّي غير قابل للنشر"></div>
+      </div>
+      <div class="ed-field"><label>تنبيه</label><textarea id="h_notice" placeholder="مثال: يرجى الالتزام بالأوقات المحددة وتوجيهات المراسم"></textarea></div>
+    </div>
+    <div class="ed-card">
+      <h3>جهات الاتصال</h3>
+      <div id="contactsBox"></div>
+    </div>
+  </div>
+
+  <!-- ===== Days and events tab ===== -->
+  <div class="ed-panel" id="panel-days">
+    <div id="daysBox"></div>
+    <button class="ed-btn secondary" onclick="addDay()">+ إضافة يوم</button>
+  </div>
+
+  <!-- ===== Prayer times tab ===== -->
+  <div class="ed-panel" id="panel-prayer">
+    <div id="prayerBox"></div>
+  </div>
+</div>
+
+<!-- Live preview overlay -->
+<div class="preview-overlay hidden" id="previewOverlay">
+  <div>
+    <div class="preview-tabs" id="previewTabs"></div>
+    <div class="preview-frame">
+      <div class="phone-wrap" id="previewContent" style="padding:0;"></div>
+      <button class="ed-btn primary preview-close" onclick="closePreview()">إغلاق المعاينة</button>
+    </div>
+  </div>
+</div>
+
+<!-- Print / PDF export area (hidden on screen, shown only by @media print) -->
+<div id="printArea"></div>
+
+<script src="assets/main.js"></script>
+<script>
+/* =========================================================
+   Boot immediately — no login step. Anyone who opens this page can
+   edit and publish (see the write-access note in README.md).
+   ========================================================= */
+bootEditor();
+
+/* =========================================================
+   Application state
+   `state` is the single in-memory object that mirrors the Firestore
+   document. Every input mutates it directly (see wireInput below);
+   we deliberately avoid re-rendering a whole panel on every keystroke
+   because that destroys and recreates the focused <input>, which is
+   what caused text entry to lose focus after a single character.
+   ========================================================= */
+const PRAYERS = ['الفجر', 'الظهر', 'العصر', 'المغرب', 'العشاء'];
+
+function emptyDay() {
+  return {
+    id: 'day' + Date.now() + Math.floor(Math.random() * 1000),
+    name: '', weekday: '', hijri: '', gregorian: '', gregorianDisplay: '',
+    color: 'navy',
+    events: [],
+    prayers: { الفجر: '', الظهر: '', العصر: '', المغرب: '', العشاء: '' },
+  };
+}
+function emptyEvent() {
+  return { time: '', cat: '', iconId: '', title: '', note: '', locName: '', locUrl: '' };
+}
+
+let state = {
+  home: {
+    welcome: '', org: '', year: '', secret: '', notice: '',
+    contacts: [
+      { role: '', name: '', phone: '' }, { role: '', name: '', phone: '' },
+      { role: '', name: '', phone: '' }, { role: '', name: '', phone: '' },
+    ],
+  },
+  days: [],
+};
+let booted = false;
+
+/** Fills in any missing pieces of a loaded state object with safe
+ *  defaults, so an older or partially-published document never breaks
+ *  rendering (e.g. a document saved before "contacts" existed). */
+function normalizeState(s) {
+  s = s || {};
+  s.home = s.home || {};
+  s.home.welcome = s.home.welcome || '';
+  s.home.org = s.home.org || '';
+  s.home.year = s.home.year || '';
+  s.home.secret = s.home.secret || '';
+  s.home.notice = s.home.notice || '';
+  if (!Array.isArray(s.home.contacts)) s.home.contacts = [];
+  while (s.home.contacts.length < 4) s.home.contacts.push({ role: '', name: '', phone: '' });
+  s.home.contacts = s.home.contacts.slice(0, 4).map(c => ({
+    role: (c && c.role) || '', name: (c && c.name) || '', phone: (c && c.phone) || '',
+  }));
+  s.days = Array.isArray(s.days) ? s.days : [];
+  s.days.forEach(d => {
+    d.events = Array.isArray(d.events) ? d.events : [];
+    d.prayers = d.prayers || {};
+    PRAYERS.forEach(p => { d.prayers[p] = d.prayers[p] || ''; });
+  });
+  return s;
+}
+
+async function bootEditor() {
+  if (booted) return;
+  booted = true;
+  try {
+    const data = await loadData();
+    if (data) {
+      state = normalizeState(data);
+      document.getElementById('saveStatus').textContent = 'تم تحميل آخر نسخة منشورة.';
+    } else {
+      document.getElementById('saveStatus').textContent = 'لا توجد نسخة منشورة بعد — يرجى تعبئة البيانات ثم نشر أول نسخة.';
+    }
+  } catch (e) {
+    document.getElementById('saveStatus').textContent = 'تعذّر تحميل آخر نسخة (' + e.message + ').';
+  }
+  // Each render call is independent so a problem in one tab's data
+  // never prevents the other tabs from rendering.
+  try { renderHome(); } catch (e) { console.error('renderHome failed', e); }
+  try { renderDays(); } catch (e) { console.error('renderDays failed', e); }
+  try { renderPrayer(); } catch (e) { console.error('renderPrayer failed', e); }
+}
+
+/* =========================================================
+   Input helper
+   Binds an <input>/<textarea> to a plain-object property WITHOUT
+   ever re-rendering the DOM on 'input'. Optional onLiveUpdate lets a
+   field patch a *different, already-existing* DOM node directly
+   (e.g. the day-block title echoing the name field) instead of
+   rebuilding the whole panel.
+   ========================================================= */
+function wireInput(inputEl, getSet, onLiveUpdate) {
+  inputEl.value = getSet.get() || '';
+  inputEl.addEventListener('input', () => {
+    getSet.set(inputEl.value);
+    if (onLiveUpdate) onLiveUpdate(inputEl.value);
+  });
+  return inputEl;
+}
+
+function field(label, inputEl, help) {
+  const wrap = document.createElement('div');
+  wrap.className = 'ed-field';
+  const l = document.createElement('label');
+  l.textContent = label;
+  wrap.appendChild(l);
+  wrap.appendChild(inputEl);
+  if (help) {
+    const h = document.createElement('div');
+    h.className = 'help';
+    h.textContent = help;
+    wrap.appendChild(h);
+  }
+  return wrap;
+}
+
+function textInput(placeholder) {
+  const i = document.createElement('input');
+  if (placeholder) i.placeholder = placeholder;
+  return i;
+}
+
+/* =========================================================
+   Render: Home tab
+   Rendered once per boot; every field mutates state directly.
+   ========================================================= */
+function renderHome() {
+  wireInput(document.getElementById('h_welcome'), { get: () => state.home.welcome, set: v => state.home.welcome = v });
+  wireInput(document.getElementById('h_org'), { get: () => state.home.org, set: v => state.home.org = v });
+  wireInput(document.getElementById('h_year'), { get: () => state.home.year, set: v => state.home.year = v });
+  wireInput(document.getElementById('h_secret'), { get: () => state.home.secret, set: v => state.home.secret = v });
+  wireInput(document.getElementById('h_notice'), { get: () => state.home.notice, set: v => state.home.notice = v });
+
+  const box = document.getElementById('contactsBox');
+  box.innerHTML = '';
+  state.home.contacts.forEach((c, i) => {
+    const row = document.createElement('div');
+    row.className = 'ed-grid2';
+    row.style.marginBottom = '10px';
+    row.appendChild(field('الدور (جهة اتصال ' + (i + 1) + ')',
+      wireInput(textInput('مثال: المراسم'), { get: () => c.role, set: v => c.role = v })));
+    row.appendChild(field('الاسم',
+      wireInput(textInput('مثال: الاسم الكامل'), { get: () => c.name, set: v => c.name = v })));
+    row.appendChild(field('الجوال',
+      wireInput(textInput('مثال: 05xxxxxxxx'), { get: () => c.phone, set: v => c.phone = v })));
+    box.appendChild(row);
+  });
+}
+
+/* =========================================================
+   Render: Days and events tab
+   renderDays() rebuilds the whole day list — only called on
+   structural changes (add/remove day, add/remove event, color change).
+   Text field edits never call this function.
+   ========================================================= */
+function renderDays() {
+  const box = document.getElementById('daysBox');
+  box.innerHTML = '';
+  state.days.forEach((day, di) => box.appendChild(buildDayBlock(day, di)));
+}
+
+function buildDayBlock(day, di) {
+  const block = document.createElement('div');
+  block.className = 'day-block';
+
+  // Header: color swatch + live title, updated in place (not via full re-render) when the name field changes.
+  const head = document.createElement('div');
+  head.className = 'day-block-head';
+  const titleWrap = document.createElement('div');
+  const swatch = el('span', { class: 'day-swatch', style: 'background:' + dayColor(day.color) });
+  const titleText = el('b', {}, day.name || 'يوم بدون اسم');
+  titleWrap.appendChild(swatch);
+  titleWrap.appendChild(titleText);
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'ed-btn danger';
+  delBtn.textContent = 'حذف اليوم';
+  delBtn.onclick = () => {
+    if (confirm('تأكيد حذف هذا اليوم بكل فعالياته؟')) { state.days.splice(di, 1); renderDays(); }
+  };
+  head.appendChild(titleWrap);
+  head.appendChild(delBtn);
+  block.appendChild(head);
+
+  // Basic fields
+  const grid = document.createElement('div');
+  grid.className = 'ed-grid2';
+
+  grid.appendChild(field('اسم اليوم', wireInput(
+    textInput('مثال: يوم عرفة'),
+    { get: () => day.name, set: v => day.name = v },
+    v => { titleText.textContent = v || 'يوم بدون اسم'; } // live-patch the header only, no full re-render
+  )));
+
+  grid.appendChild(field('اليوم بالأسبوع', wireInput(
+    textInput('مثال: يوم الثلاثاء'),
+    { get: () => day.weekday, set: v => day.weekday = v },
+  ), 'يُملأ تلقائيًا عند اختيار التاريخ الميلادي، ويمكن تعديله يدويًا'));
+
+  // Both dates pick the SAME underlying day — either box opens a calendar,
+  // and choosing a date in one updates the other automatically (a native
+  // <input type="date"> always stores a Gregorian ISO value internally,
+  // even when its picker is displayed with the Hijri calendar via `lang`).
+  const gregInput = document.createElement('input');
+  gregInput.type = 'date';
+  gregInput.value = day.gregorian || '';
+
+  const hijriInput = document.createElement('input');
+  hijriInput.type = 'date';
+  hijriInput.lang = 'ar-SA-u-ca-islamic-umalqura';
+  hijriInput.value = day.gregorian || '';
+
+  // The "اسم اليوم" field is grid.children[0] and "اليوم بالأسبوع" is grid.children[1] (both already appended above).
+  const weekdayFieldInput = grid.children[1].querySelector('input');
+
+  function syncFromIso(iso) {
+    day.gregorian = iso;
+    day.gregorianDisplay = gregorianDisplay(iso);
+    day.hijri = hijriFromGregorian(iso);
+    const autoWeekday = weekdayFromGregorian(iso);
+    if (autoWeekday) { day.weekday = autoWeekday; weekdayFieldInput.value = autoWeekday; }
+    gregInput.value = iso;
+    hijriInput.value = iso;
+  }
+  gregInput.addEventListener('change', () => syncFromIso(gregInput.value));
+  hijriInput.addEventListener('change', () => syncFromIso(hijriInput.value));
+
+  grid.appendChild(field('التاريخ الميلادي', gregInput, 'يملأ اليوم والتاريخ الهجري تلقائيًا'));
+  grid.appendChild(field('التاريخ الهجري', hijriInput, 'نفس التاريخ بالتقويم الهجري — التعديل من أي مربع يحدّث الآخر'));
+
+  block.appendChild(grid);
+
+  // Color picker: preset swatches with Arabic names + a custom color option.
+  block.appendChild(buildColorPicker(day, swatch));
+
+  // Events
+  const evHead = document.createElement('h3');
+  evHead.textContent = 'الفعاليات';
+  evHead.style.marginTop = '14px';
+  block.appendChild(evHead);
+
+  const evBox = document.createElement('div');
+  evBox.id = 'events-' + day.id;
+  renderEventsInto(evBox, day);
+  block.appendChild(evBox);
+
+  const addEvBtn = document.createElement('button');
+  addEvBtn.className = 'ed-btn secondary';
+  addEvBtn.textContent = '+ إضافة فعالية';
+  addEvBtn.style.marginTop = '6px';
+  addEvBtn.onclick = () => { day.events.push(emptyEvent()); renderEventsInto(evBox, day); };
+  block.appendChild(addEvBtn);
+
+  return block;
+}
+
+/** Builds the day-color picker: preset swatch buttons + a native color input for custom colors. */
+function buildColorPicker(day, headerSwatchEl) {
+  const wrap = document.createElement('div');
+  wrap.className = 'ed-field';
+  wrap.innerHTML = '<label>لون اليوم</label>';
+
+  const picker = document.createElement('div');
+  picker.className = 'color-picker';
+
+  const isPreset = id => DAY_COLOR_PRESETS.some(c => c.id === id);
+  const refreshSelection = () => {
+    picker.querySelectorAll('.color-swatch-btn').forEach(b => b.classList.remove('selected'));
+    if (isPreset(day.color)) {
+      const btn = picker.querySelector('[data-preset="' + day.color + '"]');
+      if (btn) btn.classList.add('selected');
+    } else {
+      picker.querySelector('.custom-btn')?.classList.add('selected');
+    }
+  };
+
+  DAY_COLOR_PRESETS.forEach(c => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'color-swatch-btn';
+    b.style.background = c.hex;
+    b.title = c.label;
+    b.dataset.preset = c.id;
+    b.onclick = () => {
+      day.color = c.id;
+      headerSwatchEl.style.background = c.hex;
+      refreshSelection();
+    };
+    picker.appendChild(b);
+  });
+
+  // Custom color: a hidden native color input triggered by a dashed "+" button.
+  const customBtn = document.createElement('button');
+  customBtn.type = 'button';
+  customBtn.className = 'color-swatch-btn custom-btn';
+  customBtn.title = 'لون آخر';
+  customBtn.textContent = '+';
+  const customInput = document.createElement('input');
+  customInput.type = 'color';
+  customInput.className = 'color-native';
+  customInput.style.display = 'none';
+  customInput.value = day.color.startsWith('#') ? day.color : '#8C6530';
+  customBtn.onclick = () => customInput.click();
+  customInput.addEventListener('input', () => {
+    day.color = customInput.value;
+    headerSwatchEl.style.background = customInput.value;
+    refreshSelection();
+  });
+  picker.appendChild(customBtn);
+  picker.appendChild(customInput);
+
+  wrap.appendChild(picker);
+  refreshSelection();
+  return wrap;
+}
+
+/** Rebuilds only the events list for one day. Called on add/remove event, never on keystroke. */
+function renderEventsInto(container, day) {
+  container.innerHTML = '';
+  day.events.forEach((ev, ei) => container.appendChild(buildEventRow(ev, day, ei, container)));
+}
+
+function buildEventRow(ev, day, ei, eventsContainer) {
+  const row = document.createElement('div');
+  row.className = 'ev-row';
+
+  const top = document.createElement('div');
+  top.className = 'ev-row-top';
+
+  const timeInp = wireInput(textInput('مثال: ٤:٣٠ عصرًا'), { get: () => ev.time, set: v => ev.time = v });
+  const titleInp = wireInput(textInput('مثال: التجمع والاستعداد'), { get: () => ev.title, set: v => ev.title = v });
+  const rm = document.createElement('button');
+  rm.className = 'ev-remove';
+  rm.textContent = '×';
+  rm.title = 'حذف الفعالية';
+  rm.onclick = () => { day.events.splice(ei, 1); renderEventsInto(eventsContainer, day); };
+
+  top.appendChild(field('الوقت', timeInp));
+  top.appendChild(field('اسم الفعالية', titleInp));
+  top.appendChild(rm);
+  row.appendChild(top);
+
+  // Free-text category label (shown under the event title on the public pages).
+  const catInp = wireInput(textInput('مثال: تحرك، تجمع، وجبة… (اكتب ما يناسب)'), { get: () => ev.cat, set: v => ev.cat = v });
+  row.appendChild(field('تصنيف الفعالية', catInp, 'نص حر — يظهر كما تكتبه بالضبط تحت عنوان الفعالية'));
+
+  // Icon picker: purely visual, separate from the free-text category above.
+  row.appendChild(buildIconPicker(ev));
+
+  const more2 = document.createElement('div');
+  more2.className = 'ev-row-more2';
+  const noteInp = wireInput(textInput('مثال: التنسيق مع المراسم'), { get: () => ev.note, set: v => ev.note = v });
+  more2.appendChild(field('ملاحظات', noteInp, 'يظهر بلون مميز أسفل الفعالية'));
+
+  const locWrap = document.createElement('div');
+  locWrap.style.display = 'flex';
+  locWrap.style.gap = '6px';
+  const locNameInp = wireInput(textInput('مثال: مسجد نمرة'), { get: () => ev.locName, set: v => ev.locName = v });
+  const locUrlInp = wireInput(textInput('رابط خرائط قوقل'), { get: () => ev.locUrl, set: v => ev.locUrl = v });
+  locNameInp.style.flex = '1';
+  locUrlInp.style.flex = '2';
+  locWrap.appendChild(locNameInp);
+  locWrap.appendChild(locUrlInp);
+  more2.appendChild(field('الموقع (اختياري)', locWrap));
+
+  row.appendChild(more2);
+  return row;
+}
+
+/** Small visual icon-button grid — choosing an icon does not change the free-text category. */
+function buildIconPicker(ev) {
+  const wrap = document.createElement('div');
+  wrap.className = 'ed-field';
+  wrap.innerHTML = '<label>الأيقونة</label>';
+  const picker = document.createElement('div');
+  picker.className = 'icon-picker';
+
+  const refresh = () => {
+    picker.querySelectorAll('.icon-picker-btn').forEach(b =>
+      b.classList.toggle('selected', b.dataset.icon === (ev.iconId || 'clock')));
+  };
+
+  ICON_PRESETS.forEach(p => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'icon-picker-btn';
+    b.title = p.label;
+    b.dataset.icon = p.id;
+    b.innerHTML = icon(p.id);
+    b.onclick = () => { ev.iconId = p.id; refresh(); };
+    picker.appendChild(b);
+  });
+
+  wrap.appendChild(picker);
+  refresh();
+  return wrap;
+}
+
+function addDay() {
+  state.days.push(emptyDay());
+  renderDays();
+}
+
+/* =========================================================
+   Render: Prayer-times tab
+   ========================================================= */
+function renderPrayer() {
+  const box = document.getElementById('prayerBox');
+  box.innerHTML = '';
+  state.days.forEach(day => {
+    const card = document.createElement('div');
+    card.className = 'ed-card';
+    const h = document.createElement('h3');
+    const swatch = el('span', { class: 'day-swatch', style: 'background:' + dayColor(day.color) });
+    h.appendChild(swatch);
+    h.appendChild(document.createTextNode(day.name || 'يوم بدون اسم'));
+    card.appendChild(h);
+
+    const grid = document.createElement('div');
+    grid.className = 'prayer-grid';
+    PRAYERS.forEach(p => {
+      const inp = wireInput(textInput('مثال: ١٢:١٨ ظهرًا'), { get: () => day.prayers[p], set: v => day.prayers[p] = v });
+      grid.appendChild(field(p, inp));
+    });
+    card.appendChild(grid);
+    box.appendChild(card);
+  });
+}
+
+function renderAll() { renderHome(); renderDays(); renderPrayer(); }
+
+/* =========================================================
+   Tabs
+   ========================================================= */
+function showTab(name) {
+  document.querySelectorAll('.ed-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.ed-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+  if (name === 'prayer') renderPrayer(); // day names/colors may have changed since last render
+}
+
+/* =========================================================
+   Publish
+   ========================================================= */
+async function publish() {
+  const btn = document.getElementById('publishBtn');
+  const status = document.getElementById('saveStatus');
+  btn.disabled = true;
+  status.textContent = 'جاري النشر...';
+  try {
+    await saveData(state);
+    status.textContent = 'تم النشر ✓ — الرابط الذي يستخدمه الحضور يعرض هذا التحديث الآن.';
+  } catch (e) {
+    status.textContent = 'حدث خطأ أثناء النشر: ' + e.message;
+  }
+  btn.disabled = false;
+}
+
+/* =========================================================
+   Live preview — reuses the exact same CSS classes as the public pages
+   so what you see here matches the published site.
+   ========================================================= */
+let previewMode = 'home';
+function openPreview() {
+  document.getElementById('previewOverlay').classList.remove('hidden');
+  const tabsBox = document.getElementById('previewTabs');
+  tabsBox.innerHTML = '';
+  const mkTab = (label, mode) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.className = mode === previewMode ? 'active' : '';
+    b.onclick = () => { previewMode = mode; renderPreview(); };
+    return b;
+  };
+  tabsBox.appendChild(mkTab('الرئيسية', 'home'));
+  tabsBox.appendChild(mkTab('الجدول', 'schedule'));
+  state.days.forEach(d => {
+    tabsBox.appendChild(mkTab(d.name || 'يوم بدون اسم', 'day:' + d.id));
+    tabsBox.appendChild(mkTab('صلاة ' + (d.name || ''), 'prayer:' + d.id));
+  });
+  renderPreview();
+}
+function closePreview() { document.getElementById('previewOverlay').classList.add('hidden'); }
+
+/* =========================================================
+   Shared page builders
+   Each function renders ONE real site page (home / schedule /
+   a single day / a single day's prayer times) into a container.
+   Both the live preview overlay AND the PDF export call these same
+   functions, so the two can never drift apart in design — whatever
+   changes here changes everywhere at once, exactly like the real
+   index.html / schedule.html / day.html / prayer-times.html pages.
+   ========================================================= */
+
+function buildHomePage(container) {
+  container.appendChild(el('div', { class: 'emblem-head' }, [
+    el('div', { class: 'welcome-banner' }, [
+      el('div', { class: 'hayyakum-ar' }, state.home.welcome),
+      el('div', { class: 'hayyakum-en' }, 'Hayyakum Allah'),
+    ]),
+    el('div', { class: 'logo-slot' }, el('img', { src: 'assets/logo.png', style: 'max-width:100%;max-height:100%' })),
+    el('h1', {}, state.home.org),
+    el('div', { class: 'year' }, state.home.year),
+  ]));
+  container.appendChild(el('a', { class: 'btn-gold', style: 'margin-top:14px' }, 'دخول'));
+  container.appendChild(el('span', { class: 'secret-badge' }, state.home.secret));
+  const grid = el('div', { class: 'contact-grid' });
+  state.home.contacts.forEach(ct => {
+    if (!ct.role) return;
+    grid.appendChild(el('div', { class: 'contact-item' }, [
+      el('div', { class: 'role' }, ct.role), el('div', { class: 'name' }, ct.name),
+      el('div', { class: 'phone', html: icon('phone') + ' <span>' + ct.phone + '</span>' }),
+    ]));
+  });
+  container.appendChild(grid);
+  container.appendChild(el('div', { class: 'notice', html: icon('clock') + ' <span>' + state.home.notice + '</span>' }));
+}
+
+function buildSchedulePage(container) {
+  container.appendChild(el('div', { class: 'page-title' }, [el('h1', {}, 'الجدول الزمني لأداء فريضة الحج'), el('div', { class: 'sub' }, state.home.year)]));
+  state.days.forEach(d => {
+    const color = dayColor(d.color);
+    container.appendChild(el('div', { class: 'day-card' }, [
+      el('div', { class: 'head-pill', style: 'background:' + color }, [
+        el('div', { class: 'weekday' }, d.weekday), el('div', { class: 'hijri' }, (d.hijri || '') + '  الموافق ' + (d.gregorianDisplay || '')),
+      ]),
+      el('div', { class: 'row' }, [
+        el('div', { class: 'prayer-link' }, [el('span', { class: 'circ', html: icon('prayer') }), 'أوقات الصلاة']),
+        el('div', { class: 'day-name', style: 'color:' + color }, d.name),
+        el('div', { class: 'go-link', style: 'background:' + color + ';color:#fff', html: icon('arrive') }),
+      ]),
+    ]));
+  });
+}
+
+function buildDayPage(container, d) {
+  const color = dayColor(d.color);
+  container.appendChild(el('div', { class: 'page-title' }, [
+    el('div', { style: 'display:inline-block;color:#fff;padding:8px 22px;border-radius:999px;font-weight:800;font-size:1.05rem;background:' + color }, d.name),
+    el('div', { class: 'sub', style: 'margin-top:8px' }, (d.weekday || '') + '  ' + (d.hijri || '') + ' الموافق ' + (d.gregorianDisplay || '')),
+  ]));
+  if (!d.events.length) { container.appendChild(el('div', { class: 'empty-state' }, 'لا توجد فعاليات مضافة لهذا اليوم بعد.')); return; }
+  d.events.forEach(r => {
+    const parts = [];
+    if (r.time) parts.push(el('div', { class: 'time-pill', style: 'background:' + color }, 'الساعة ' + r.time));
+    const iconId = r.iconId || '';
+    const circClass = iconId === 'move' ? 'icon-circ cat-move' : iconId === 'gather' ? 'icon-circ cat-gather' : 'icon-circ';
+    const iconCirc = el('span', { class: circClass, html: icon(iconId || 'clock') });
+    if (iconId !== 'move' && iconId !== 'gather') iconCirc.setAttribute('style', 'background:' + color);
+    const txtChildren = [el('div', { class: 'etitle' }, r.title)];
+    if (r.cat) txtChildren.push(el('div', { class: 'ecat' }, r.cat));
+    if (r.note) txtChildren.push(el('div', { class: 'enote' }, r.note));
+    const bodyChildren = [iconCirc, el('div', { class: 'txt' }, txtChildren)];
+    if (r.locUrl) bodyChildren.push(el('a', { class: 'loc-link', href: r.locUrl, target: '_blank', html: icon('pin') }));
+    parts.push(el('div', { class: 'body' }, bodyChildren));
+    container.appendChild(el('div', { class: 'event' }, parts));
+  });
+}
+
+function buildPrayerPage(container, d) {
+  const color = dayColor(d.color);
+  container.appendChild(el('div', { class: 'page-title', style: 'margin-top:8px' }, [
+    el('h1', { style: 'white-space:pre-line' }, 'أوقات الصلاة في مكة المكرمة\n' + state.home.year),
+  ]));
+  container.appendChild(el('div', { class: 'page-title', style: 'margin-bottom:20px' }, [
+    el('div', { style: 'display:inline-block;color:#fff;padding:8px 22px;border-radius:999px;font-weight:800;font-size:1.05rem;background:' + color }, d.name),
+    el('div', { class: 'sub', style: 'margin-top:8px' }, (d.weekday || '') + '  ' + (d.hijri || '') + ' الموافق ' + (d.gregorianDisplay || '')),
+  ]));
+  const any = PRAYERS.some(p => d.prayers[p]);
+  if (!any) { container.appendChild(el('div', { class: 'empty-state' }, 'لم تُضف أوقات الصلاة لهذا اليوم بعد.')); return; }
+  PRAYERS.forEach(p => {
+    if (!d.prayers[p]) return;
+    container.appendChild(el('div', { class: 'prayer-row' }, [
+      el('span', { class: 'kaaba', style: 'background:' + color, html: icon('prayer') }),
+      el('div', { class: 'p-time' }, 'الساعة ' + d.prayers[p]),
+      el('div', { class: 'p-name' }, 'صلاة ' + p),
+    ]));
+  });
+}
+
+function renderPreview() {
+  const c = document.getElementById('previewContent');
+  c.innerHTML = '';
+  c.style.padding = '20px 14px';
+
+  if (previewMode === 'home') buildHomePage(c);
+  else if (previewMode === 'schedule') buildSchedulePage(c);
+  else if (previewMode.startsWith('day:')) {
+    const d = state.days.find(x => x.id === previewMode.slice(4));
+    if (d) buildDayPage(c, d);
+  } else if (previewMode.startsWith('prayer:')) {
+    const d = state.days.find(x => x.id === previewMode.slice(7));
+    if (d) buildPrayerPage(c, d);
+  }
+}
+
+/* =========================================================
+   PDF export
+   Builds the SAME four page types a guest sees on the live link —
+   home, schedule, one page per day, one prayer-times page per day —
+   using the exact functions above, so this is a byte-for-byte visual
+   match of the real site, not a separate simplified layout.
+   Location links stay as real <a href> elements; whether they remain
+   clickable in the saved PDF depends on the browser's own "Save as
+   PDF" implementation.
+   ========================================================= */
+function exportPDF() {
+  const area = document.getElementById('printArea');
+  area.innerHTML = '';
+
+  const homePage = el('div', { class: 'print-page phone-wrap' });
+  buildHomePage(homePage);
+  area.appendChild(homePage);
+
+  const schedulePage = el('div', { class: 'print-page phone-wrap' });
+  buildSchedulePage(schedulePage);
+  area.appendChild(schedulePage);
+
+  state.days.forEach(d => {
+    const dayPage = el('div', { class: 'print-page phone-wrap' });
+    buildDayPage(dayPage, d);
+    area.appendChild(dayPage);
+
+    const prayerPage = el('div', { class: 'print-page phone-wrap' });
+    buildPrayerPage(prayerPage, d);
+    area.appendChild(prayerPage);
+  });
+
+  window.print();
+}
+</script>
+</body>
+</html>

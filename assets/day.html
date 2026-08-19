@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>جدول اليوم — ترتيبات الحج</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="assets/firebase-config.js"></script>
+<script src="assets/data-store.js"></script>
+</head>
+<body>
+<div class="phone-wrap">
+
+  <div class="emblem-head">
+    <div class="logo-slot">
+      <img src="assets/logo.png" alt="شعار الجهة" onerror="this.onerror=null;this.src='assets/logo-placeholder.svg';">
+    </div>
+  </div>
+
+  <div class="page-title" id="dayHead" style="margin-top:8px;"></div>
+
+  <div id="eventsList"></div>
+
+  <a class="btn-back" href="schedule.html">رجوع</a>
+</div>
+
+<script src="assets/main.js"></script>
+<script>
+(async function () {
+  const listEl = document.getElementById('eventsList');
+  const headEl = document.getElementById('dayHead');
+  const dayId = new URLSearchParams(location.search).get('day');
+
+  try {
+    const data = await loadData();
+    if (!data) throw new Error('لا توجد نسخة منشورة بعد');
+    const days = data.days || [];
+    const day = days.find(d => d.id === dayId) || days[0];
+    if (!day) throw new Error('لا توجد أيام معرّفة');
+
+    const color = dayColor(day.color);
+    headEl.innerHTML = '';
+    headEl.appendChild(el('div', {
+      style: 'display:inline-block;color:#fff;padding:8px 22px;border-radius:999px;font-weight:800;font-size:1.05rem;background:' + color
+    }, day.name));
+    headEl.appendChild(el('div', { class: 'sub', style: 'margin-top:8px;' },
+      (day.weekday || '') + '  ' + (day.hijri || '') + ' الموافق ' + (day.gregorianDisplay || day.gregorian || '')));
+
+    const rows = day.events || [];
+    listEl.innerHTML = '';
+    if (!rows.length) {
+      listEl.appendChild(el('div', { class: 'empty-state' }, 'لا توجد فعاليات مضافة لهذا اليوم بعد.'));
+      return;
+    }
+
+    rows.forEach(r => {
+      // r.iconId chooses the visual icon/circle color; r.cat is the free-text label shown under the title.
+      const iconId = (r.iconId || '').trim();
+      const parts = [];
+      if (r.time) {
+        parts.push(el('div', { class: 'time-pill', style: 'background:' + color }, 'الساعة ' + r.time));
+      }
+      const circClass = iconId === 'move' ? 'icon-circ cat-move' : iconId === 'gather' ? 'icon-circ cat-gather' : 'icon-circ';
+      const iconCirc = el('span', { class: circClass, html: icon(iconId || 'clock') });
+      if (iconId !== 'move' && iconId !== 'gather') iconCirc.setAttribute('style', 'background:' + color);
+
+      const txtChildren = [el('div', { class: 'etitle' }, r.title || '')];
+      if (r.cat) txtChildren.push(el('div', { class: 'ecat' }, r.cat));
+      if (r.note) txtChildren.push(el('div', { class: 'enote' }, r.note));
+
+      const bodyChildren = [iconCirc, el('div', { class: 'txt' }, txtChildren)];
+      if (r.locUrl) {
+        bodyChildren.push(el('a', { class: 'loc-link', href: r.locUrl, target: '_blank', rel: 'noopener', title: r.locName || 'الموقع', html: icon('pin') }));
+      }
+      parts.push(el('div', { class: 'body' }, bodyChildren));
+      listEl.appendChild(el('div', { class: 'event' }, parts));
+    });
+  } catch (e) {
+    showError(listEl, e.message);
+  }
+})();
+</script>
+</body>
+</html>

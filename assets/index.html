@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ترتيبات ضيوف إمارة منطقة مكة المكرمة</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="assets/firebase-config.js"></script>
+<script src="assets/data-store.js"></script>
+</head>
+<body>
+<div class="phone-wrap">
+
+  <div class="emblem-head">
+    <div class="welcome-banner">
+      <div class="hayyakum-ar" id="hayyakum"></div>
+      <div class="hayyakum-en">Hayyakum Allah</div>
+    </div>
+    <div class="logo-slot">
+      <img src="assets/logo.png" alt="شعار الجهة" onerror="this.onerror=null;this.src='assets/logo-placeholder.svg';">
+    </div>
+    <h1 id="orgName"></h1>
+    <div class="year" id="hajjYear"></div>
+  </div>
+
+  <a class="btn-gold" href="schedule.html">دخول</a>
+  <span class="secret-badge" id="secretLabel"></span>
+
+  <div class="contact-grid" id="contactGrid"></div>
+
+  <div class="notice" id="noticeText"></div>
+
+</div>
+
+<script src="assets/main.js"></script>
+<script>
+// Render the landing page from the latest published Firestore snapshot.
+(async function () {
+  try {
+    const data = await loadData();
+    if (!data) throw new Error('لا توجد نسخة منشورة بعد');
+    const h = data.home;
+    document.getElementById('hayyakum').textContent = h.welcome || '';
+    document.getElementById('orgName').textContent = h.org || '';
+    document.getElementById('hajjYear').textContent = h.year || '';
+    document.getElementById('secretLabel').textContent = h.secret || '';
+    document.getElementById('noticeText').innerHTML = icon('clock') + ' <span>' + (h.notice || '') + '</span>';
+
+    const grid = document.getElementById('contactGrid');
+    grid.innerHTML = '';
+    (h.contacts || []).forEach(ct => {
+      if (!ct.role) return;
+      grid.appendChild(el('div', { class: 'contact-item' }, [
+        el('div', { class: 'role' }, ct.role),
+        el('div', { class: 'name' }, ct.name || ''),
+        el('div', { class: 'phone', html: icon('phone') + ' <span>' + (ct.phone || '') + '</span>' }),
+      ]));
+    });
+  } catch (e) {
+    showError(document.querySelector('.phone-wrap'), e.message);
+  }
+})();
+</script>
+</body>
+</html>
