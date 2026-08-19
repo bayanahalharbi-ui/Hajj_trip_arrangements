@@ -288,9 +288,6 @@ input[type="color"].color-native{
 .preview-tabs button.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
 
 /* ---- Login screen ---- */
-.login-shell{ max-width: 360px; margin: 70px auto; text-align:center; }
-.login-shell .ed-card{ text-align:right; }
-.login-shell .err{ color: var(--red); font-size:.82rem; margin-top:8px; min-height:1em; }
 .save-status{ font-size:.78rem; color: var(--ink-soft); margin-top:6px; text-align:left; }
 
 @media (max-width: 720px){
@@ -300,9 +297,11 @@ input[type="color"].color-native{
 }
 
 /* =========================================================
-   Print / PDF export — reuses the real component classes above
-   (.day-card, .event, .prayer-row, etc.) so the exported PDF matches
-   the on-screen design instead of a generic printed list.
+   Print / PDF export — each exported page is a real .phone-wrap
+   built by the exact same functions as the on-screen preview
+   (buildHomePage / buildSchedulePage / buildDayPage / buildPrayerPage
+   in editor.html), so the PDF is a direct match of the live site,
+   not a separate simplified layout.
    ========================================================= */
 #printArea{ display:none; }
 @media print{
@@ -314,10 +313,6 @@ input[type="color"].color-native{
     display:block; position:absolute; top:0; right:0; left:0;
     background: var(--cream) !important;
   }
-  .print-page{ page-break-after: always; padding:16px 8px; max-width:480px; margin:0 auto; }
+  .print-page{ page-break-after: always; margin:0 auto; padding: 28px 18px; }
   .print-page:last-child{ page-break-after: auto; }
-  .print-cover{ text-align:center; padding-top:80px; }
-  .print-cover .logo-slot{ width:110px; height:110px; margin:0 auto 18px; }
-  .print-cover h1{ font-size:1.4rem; }
-  .print-loc-link{ color:#2E6BA8 !important; text-decoration:underline !important; font-size:.75rem; }
 }
