@@ -125,13 +125,38 @@ let state = {
 };
 let booted = false;
 
+/** Fills in any missing pieces of a loaded state object with safe
+ *  defaults, so an older or partially-published document never breaks
+ *  rendering (e.g. a document saved before "contacts" existed). */
+function normalizeState(s) {
+  s = s || {};
+  s.home = s.home || {};
+  s.home.welcome = s.home.welcome || '';
+  s.home.org = s.home.org || '';
+  s.home.year = s.home.year || '';
+  s.home.secret = s.home.secret || '';
+  s.home.notice = s.home.notice || '';
+  if (!Array.isArray(s.home.contacts)) s.home.contacts = [];
+  while (s.home.contacts.length < 4) s.home.contacts.push({ role: '', name: '', phone: '' });
+  s.home.contacts = s.home.contacts.slice(0, 4).map(c => ({
+    role: (c && c.role) || '', name: (c && c.name) || '', phone: (c && c.phone) || '',
+  }));
+  s.days = Array.isArray(s.days) ? s.days : [];
+  s.days.forEach(d => {
+    d.events = Array.isArray(d.events) ? d.events : [];
+    d.prayers = d.prayers || {};
+    PRAYERS.forEach(p => { d.prayers[p] = d.prayers[p] || ''; });
+  });
+  return s;
+}
+
 async function bootEditor() {
   if (booted) return;
   booted = true;
   try {
     const data = await loadData();
     if (data) {
-      state = data;
+      state = normalizeState(data);
       document.getElementById('saveStatus').textContent = 'تم تحميل آخر نسخة منشورة.';
     } else {
       document.getElementById('saveStatus').textContent = 'لا توجد نسخة منشورة بعد — يرجى تعبئة البيانات ثم نشر أول نسخة.';
@@ -139,7 +164,11 @@ async function bootEditor() {
   } catch (e) {
     document.getElementById('saveStatus').textContent = 'تعذّر تحميل آخر نسخة (' + e.message + ').';
   }
-  renderAll();
+  // Each render call is independent so a problem in one tab's data
+  // never prevents the other tabs from rendering.
+  try { renderHome(); } catch (e) { console.error('renderHome failed', e); }
+  try { renderDays(); } catch (e) { console.error('renderDays failed', e); }
+  try { renderPrayer(); } catch (e) { console.error('renderPrayer failed', e); }
 }
 
 /* =========================================================
