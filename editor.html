@@ -332,10 +332,10 @@ function buildDayBlock(day, di) {
     if (autoWeekday) { day.weekday = autoWeekday; weekdayFieldInput.value = autoWeekday; }
     if (autoHijri) { day.hijri = autoHijri; hijriInput.value = autoHijri; }
   });
-  wireInput(hijriInput, { get: () => day.hijri, set: v => day.hijri = v });
+  //wireInput(hijriInput, { get: () => day.hijri, set: v => day.hijri = v });
 
   grid.appendChild(field('التاريخ الميلادي', gregInput, 'اختر من التقويم — يملأ اليوم والتاريخ الهجري تلقائيًا'));
-  grid.appendChild(field('التاريخ الهجري', hijriInput, 'يُقترح تلقائيًا من التاريخ الميلادي، ويمكن تعديله يدويًا'));
+  grid.appendChild(field('التاريخ الهجري', hijriInput, 'يُملأ تلقائيًا عند اختيار التاريخ الميلادي، ويمكن تعديله يدويًا'));
 
   block.appendChild(grid);
 
