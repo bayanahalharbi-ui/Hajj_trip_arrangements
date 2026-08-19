@@ -297,22 +297,38 @@ input[type="color"].color-native{
 }
 
 /* =========================================================
-   Print / PDF export — each exported page is a real .phone-wrap
-   built by the exact same functions as the on-screen preview
-   (buildHomePage / buildSchedulePage / buildDayPage / buildPrayerPage
-   in editor.html), so the PDF is a direct match of the live site,
-   not a separate simplified layout.
+   Print / PDF export — each exported page is built by the exact same
+   functions as the on-screen preview (buildHomePage / buildSchedulePage /
+   buildDayPage / buildPrayerPage in editor.html), so the PDF matches the
+   live site. Pages use a dedicated .print-card wrapper instead of the
+   on-screen .phone-wrap, because .phone-wrap's min-height:100vh is meant
+   for a scrolling browser viewport and blows up every printed page into
+   a near-empty sheet — the exact bug being fixed here.
    ========================================================= */
 #printArea{ display:none; }
 @media print{
-  @page{ margin: 14mm 10mm; }
-  html, body{ background:#fff !important; }
+  @page{ margin: 10mm 8mm; }
+  html, body{ background: var(--cream) !important; }
   body *{ visibility:hidden; }
   #printArea, #printArea *{ visibility:visible; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   #printArea{
     display:block; position:absolute; top:0; right:0; left:0;
     background: var(--cream) !important;
   }
-  .print-page{ page-break-after: always; margin:0 auto; padding: 28px 18px; }
+  .print-page{
+    page-break-after: always;
+    background: var(--cream) !important;
+    padding: 6mm 0;
+    box-sizing: border-box;
+  }
   .print-page:last-child{ page-break-after: auto; }
+  .print-card{
+    max-width: 460px;
+    margin: 0 auto;
+    background: var(--cream-card) !important;
+    border: 1px solid var(--line);
+    border-radius: 26px;
+    padding: 22px 20px 30px;
+    box-sizing: border-box;
+  }
 }
