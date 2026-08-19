@@ -301,14 +301,21 @@ input[type="color"].color-native{
    functions as the on-screen preview (buildHomePage / buildSchedulePage /
    buildDayPage / buildPrayerPage in editor.html), so the PDF matches the
    live site. Pages use a dedicated .print-card wrapper instead of the
-   on-screen .phone-wrap, because .phone-wrap's min-height:100vh is meant
-   for a scrolling browser viewport and blows up every printed page into
-   a near-empty sheet — the exact bug being fixed here.
+   on-screen .phone-wrap (whose min-height:100vh is meant for a scrolling
+   browser viewport, not a fixed printed sheet).
+
+   Note on the white border: @page{margin} is a hard paper margin
+   enforced by the print engine itself — no background color on any
+   element can paint over it, so it always shows as blank white however
+   the CSS below is written. The fix is to set @page margin to 0 and
+   let the full-bleed, full-height .print-page paint the cream color
+   edge-to-edge; visual breathing room comes from .print-page's own
+   padding and the centered, narrower .print-card inside it instead.
    ========================================================= */
 #printArea{ display:none; }
 @media print{
-  @page{ margin: 10mm 8mm; }
-  html, body{ background: var(--cream) !important; }
+  @page{ margin: 0; }
+  html, body{ background: var(--cream) !important; margin:0; }
   body *{ visibility:hidden; }
   #printArea, #printArea *{ visibility:visible; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   #printArea{
@@ -318,8 +325,9 @@ input[type="color"].color-native{
   .print-page{
     page-break-after: always;
     background: var(--cream) !important;
-    padding: 6mm 0;
+    padding: 14mm 8mm;
     box-sizing: border-box;
+    min-height: 100vh; /* fills the physical page edge-to-edge with cream, even on short pages */
   }
   .print-page:last-child{ page-break-after: auto; }
   .print-card{
