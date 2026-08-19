@@ -88,7 +88,10 @@
    Boot immediately — no login step. Anyone who opens this page can
    edit and publish (see the write-access note in README.md).
    ========================================================= */
-bootEditor();
+/* Boot call moved to the end of this script — see bottom of file.
+   Calling it here, before `state`/`booted` are declared with `let`,
+   throws a silent "temporal dead zone" ReferenceError that aborts
+   the whole boot sequence before any panel (like contacts) renders. */
 
 /* =========================================================
    Application state
@@ -697,26 +700,27 @@ function exportPDF() {
   const area = document.getElementById('printArea');
   area.innerHTML = '';
 
-  const homePage = el('div', { class: 'print-page phone-wrap' });
-  buildHomePage(homePage);
-  area.appendChild(homePage);
+  const addPage = buildFn => {
+    const page = el('div', { class: 'print-page' });
+    const card = el('div', { class: 'print-card' });
+    page.appendChild(card);
+    buildFn(card);
+    area.appendChild(page);
+  };
 
-  const schedulePage = el('div', { class: 'print-page phone-wrap' });
-  buildSchedulePage(schedulePage);
-  area.appendChild(schedulePage);
-
+  addPage(buildHomePage);
+  addPage(buildSchedulePage);
   state.days.forEach(d => {
-    const dayPage = el('div', { class: 'print-page phone-wrap' });
-    buildDayPage(dayPage, d);
-    area.appendChild(dayPage);
-
-    const prayerPage = el('div', { class: 'print-page phone-wrap' });
-    buildPrayerPage(prayerPage, d);
-    area.appendChild(prayerPage);
+    addPage(c => buildDayPage(c, d));
+    addPage(c => buildPrayerPage(c, d));
   });
 
   window.print();
 }
+
+/* Boot the editor now that every function and `let` binding above
+   (state, booted, PRAYERS, etc.) has been fully initialized. */
+bootEditor();
 </script>
 </body>
 </html>
